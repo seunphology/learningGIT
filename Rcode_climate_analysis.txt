@@ -731,6 +731,62 @@ grid.arrange(check_21,check_51_b,check_21_b,check_51,nrow=2,ncol=2)
 #End of code
 
 #Bye
+proxy_data$tambora<-proxy_data$Reconstructed_temp_p[,5:10]
+
+proxy_data$tambora
+
+seun<-proxy_data[421:480,]
+seun
+summary(seun)
+sd(seun$Reconstructed_temp_018)
+ayo<-data.frame(seun$Reconstructed_temp_p, seun$Reconstructed_temp_TRI_p)
+my.ylab = expression(paste("Average yearly temperature/(",Degrees, "°C)"))
+
+kitan<-ggplot(data = ayo, aes(x=seun$year)) +
+  geom_line(aes(y=seun$Reconstructed_temp_p, colour="Average yearly Oxygen temperature "), size=0.3) +
+  geom_line(aes(y=seun$Reconstructed_temp_TRI_p, colour="Average yearly TRI temperature "), size=0.2) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly Oxygen Temperature vs TRI Temperature") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly Oxygen temperature ", "Average yearly TRI temperature "), palette="Set2")
+kitan
+
+
+var(seun$Reconstructed_temp_p)
+sd(seun$Reconstructed_temp_p)
+
+#1780-1799 = 0.286
+seun<-proxy_data[421:440,]
+seun
+summary(seun)
+
+sd(seun$Reconstructed_temp_p)
+
+#1820-1839 = 0.397
+seun<-proxy_data[461:480,]
+seun
+summary(seun)
+
+sd(seun$Reconstructed_temp_p)
+
+#1800-1819 = 0.358
+seun<-proxy_data[441:460,]
+seun
+summary(seun)
+
+sd(seun$Reconstructed_temp_p)
+#1810-1816 = 0.41
+seun<-proxy_data[451:458,]
+seun
+
+sd(seun$Reconstructed_temp_p)
+
+#1805-1812 = 0.24
+
+seun<-proxy_data[446:453,]
+seun
+
+sd(seun$Reconstructed_temp_p)
 
 
 
