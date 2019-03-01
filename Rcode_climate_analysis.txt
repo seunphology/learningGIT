@@ -1,0 +1,734 @@
+install.packages("ggplot2")
+install.packages("xts")
+install.packages("reshape2")
+install.packages("zoo")
+install.packages("quantmod")
+install.packages("TSstudio")
+install.packages("lattice")
+install.packages("RColorBrewer")
+install.packages("stlplus")
+install.packages("biglm")
+install.packages("gridExtra")
+
+library(ggplot2)
+library(xts)
+library(reshape2)
+library(zoo)
+library(quantmod)
+library(TSstudio)
+library(lattice)
+library(RColorBrewer)
+library(stlplus)
+library(biglm)
+library(gridExtra)
+
+path<-"C:/Users/LENOVO/Desktop/project_tree_rings/tree_ring_data"
+
+path
+#reading our .txt files for Met and proxy data
+proxy_data<-read.delim(file.choose(), header = T)
+proxy_data
+met_data<-read.delim(file.choose(), header = T)
+met_data
+
+#Now, the interesting part, ploting relationship graphs
+#First,make sure proxy data match met data row for row,column for column, this is the only possibility of plotting,hence,below:
+relevant_proxy<-as.data.frame(proxy_data[542:645,])
+relevant_proxy
+#Merged both dataframes together and ofcourse,so many NA values appear as expected
+merged_data<-merge(met_data, proxy_data, by= c('year'), all = TRUE)
+merged_data
+tail(merged_data)
+#The merged data ranged from 1360-2009.
+#But we need an exact overlap,so we cut out 1901-2004 using matrix sorting
+relevant_data<-as.data.frame(merged_data[542:645,])
+relevant_data
+tail(relevant_data)
+
+
+cheeck<-data.frame(proxy_data$ANG.tri)
+my.ylab = expression(paste("Tree ring index/(", , ")"))
+
+cheeeck<-ggplot(data = cheeck, aes(x=proxy_data$year)) +
+  geom_line(aes(y=proxy_data$ANG.tri, colour="Tree Width"), size=0.2) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Tree width") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Tree Width"), palette="Set2")
+
+cheeeck
+
+chick<-data.frame(proxy_data$ANG.d18O)
+my.ylab = expression(paste("Oxygen isotope/(", , ")"))
+
+chiick<-ggplot(data = chick, aes(x=proxy_data$year)) +
+  geom_line(aes(y=proxy_data$ANG.d18O, colour="Oxygen isotope"), size=0.2) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Oxygen isotope") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Oxygen isotope"), palette="Set2")
+
+chiick
+
+grid.arrange(cheeeck,chiick,ncol=1)
+
+#finding mean precipitation and assigning it a variable name in the data table
+met_data[2:13]
+relevant_data$avg_prep_add<-rowMeans(relevant_data[,2:13])
+relevant_data$avg_prep_add
+
+#finding mean temperature and assigning it a variable name in the data table
+met_data[14:25]
+relevant_data$avg_temp_add<-rowMeans(relevant_data[,14:25])
+relevant_data$avg_temp_add
+
+#Now,to plot my average yearly precipitation vs the years
+
+check_2<-data.frame(relevant_data$avg_prep_add)
+my.ylab = expression(paste("Average yearly precipitation/(", Millimeters, "Mm)"))
+
+checkkk<-ggplot(data = check_2, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_prep_add, colour="Average yearly precipitation"), size=0.7) +
+  
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly precipitation") + 
+  theme_bw()+ 
+  scale_colour_brewer("Legend",breaks=c("Average yearly precipitation"), palette="Set2")
+checkkk
+
+#Now,to plot my average yearly Temperature vs the years
+check_3<-data.frame(relevant_data$avg_temp_add)
+my.ylab = expression(paste("Average yearly Temperature/(", Degrees, "°C)"))
+
+check_4<-ggplot(data = check_3, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_temp_add, colour="Average yearly temperature"), size=0.7) +
+  
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly temperature") + 
+  theme_bw()+ 
+  scale_colour_brewer("Legend",breaks=c("Average yearly temperature"), palette="Set2")
+check_4
+
+#To combine both Precipitation and temperature graphs
+
+grid.arrange(checkkk,check_4,nrow=1)
+
+#We decompose the temperature and precipitation data to check for trends and seasonality
+
+
+#Decomposition of our Average yearly precipitation
+
+dcomp<-stlplus(relevant_data$avg_prep_add,n.p = 12, s.window = "periodic")
+plot_1<-plot(dcomp, ylab = "Precipitation", xlab = "Time",
+             main = "Decomposition of the average yearly precipitation")
+
+#Decomposition of our Average yearly Temperature
+
+dcomp_2<-stlplus(relevant_data$avg_temp_add, n.p = 12, s.window = "periodic")
+plot_2<-plot(dcomp_2, ylab = "Temperature", xlab = "Time",
+             main = "Decomposition of the average yearly Temperature")
+
+grid.arrange(plot_1,plot_2, nrow=2)
+
+
+               #CORRELATION AND REGRESSION SECTION
+
+#1st, we do a scatterplot to find any correlation between the proxies
+
+plot(relevant_data$ANG.d18O, relevant_data$ANG.tri, xlab = "Oxygen 18 Isotope", ylab = "Tree width", main = "Scatter plot relationship between O18 Isotope & Width", pch=20, col= 'red') #scatter plot
+L_M_TRI_O18<- lm(relevant_data$ANG.tri ~relevant_data$ANG.d18O , data = relevant_data)
+L_M_TRI_O18 #gave an intercept of 0.99754 and slope of -0.06565
+summary(L_M_TRI_O18)
+cor(relevant_data$ANG.tri, relevant_data$ANG.d18O)
+abline(L_M_TRI_O18,col="blue")
+
+
+
+#plotting average yearly temperature vs O18 isotope between 1901-2004
+plot(relevant_final_data$ANG.d18O, relevant_final_data$avg_temp_add, xlab = "Oxygen Isotope", ylab = "Average yearly temperature in degrees Celcius", main = "Average yearly Temperature Vs. Oxygen 18 (1901-2004)", pch=20, col= 'red' )
+#Regression of average yearly temperature Vs. O18
+L_M_temp_O18<- lm(relevant_data$avg_temp_add ~relevant_data$ANG.d18O , data = relevant_data)
+L_M_temp_O18 #gave an intercept of 11.8408 and slope of 0.4762
+summary(L_M_temp_O18)
+cor(relevant_data$avg_temp_add, relevant_data$ANG.d18O)
+abline(L_M_temp_O18,col="blue")
+
+
+#plotting average yearly temperature vs Tree width between 1901-2004
+plot(relevant_data$ANG.tri, relevant_data$avg_temp_add, xlab = "Tree width", ylab = "Average yearly temperature in degrees Celcius", main = "Average yearly Temperature Vs. Tree width (1901-2004)", pch=20, col= 'red' )
+#Regression for Average yearly Temperature Vs. Tree width
+
+L_M_temp_TRI<- lm(relevant_data$avg_temp_add ~relevant_data$ANG.tri , data = relevant_data) 
+L_M_temp_TRI #gave an intercept of 12.0122 and slope of -0.1342
+summary(L_M_temp_TRI)
+cor(relevant_data$avg_temp_add, relevant_data$ANG.tri)
+abline(L_M_temp_TRI,col="yellow")
+
+
+#plotting average yearly precipitation vs O18 isotope between 1901-2004
+plot(relevant_data$ANG.d18O, relevant_data$avg_prep_add, xlab = "Oxygen Isotope", ylab = "Average yearly precipitation in Mm", main = "Average yearly Precipitation Vs. Oxygen 18 (1901-2004)", pch=20, col= 'blue' )
+#Regression for Average yearly precipitation Vs. Oxygen
+
+L_M_prec_O18<- lm(relevant_data$avg_prep_add ~relevant_data$ANG.d18O , data = relevant_data) 
+L_M_prec_O18 #gave an intercept of 64.908 and slope of -4.081
+summary(L_M_prec_O18)
+cor(relevant_data$avg_prep_add, relevant_data$ANG.d18O)
+abline(L_M_prec_O18,col="red")
+
+
+#plotting average yearly precipitation vs Tree width between 1901-2004
+plot(relevant_data$ANG.tri, relevant_data$avg_prep_add, xlab = "Tree width", ylab = "Average yearly precipitation in Mm", main = "Average yearly Precipitation Vs. Tree width (1901-2004)", pch=20, col= 'blue' )
+#Regression for Average yearly precipitation Vs. Tree width
+
+L_M_prec_TRI<- lm(relevant_data$avg_prep_add ~relevant_data$ANG.tri , data = relevant_data)
+L_M_prec_TRI #gave an intercept of 41.65 and slope of 23.11
+summary(L_M_prec_TRI)
+cor(relevant_data$avg_prep_add, relevant_data$ANG.tri)
+abline(L_M_prec_TRI,col="yellow")
+
+
+
+
+#Analyzing seasonality (Summer and Winter) in our data and their relationship with proxies in the years of overlap (1901-2004)
+
+#extracting summer and winter months
+
+# 1st, spring and summer months of March to August FOR PRECIPITATION
+
+relevant_data$avg_spr_summer_prec<-rowMeans(relevant_data[,4:9])
+met_data[4:9]
+relevant_data$avg_spr_summer_prec
+relevant_data$avg_spr_summer_prec
+  
+  # 2nd, winter months of September till December FOR PRECIPITATION
+  
+  met_data[10:13]
+relevant_data$avg_winter_prec<-rowMeans(relevant_data[,10:13])
+relevant_data$avg_winter_prec
+
+
+
+# 3RD, spring and summer months (March-August) FOR TEMPERATURE
+
+met_data[16:21]
+relevant_data$avg_spr_summer_temp<-rowMeans(relevant_data[,16:21])
+relevant_data$avg_spr_summer_temp
+
+# 4TH , winter months (Septemeber to December) FOR TEMPERATURE
+
+met_data[22:25]
+relevant_data$avg_winter_temp<-rowMeans(relevant_data[,22:25])
+relevant_data$avg_winter_temp
+
+
+
+
+# plotting in matrix, summer and winter precipitation and temperature effects on Oxygen isotope 18
+par(mfcol=c(2,2))
+plot(relevant_data$avg_spr_summer_prec,relevant_data$ANG.d18O)
+plot(relevant_data$avg_winter_prec,relevant_data$ANG.d18O) 
+plot(relevant_data$avg_spr_summer_temp,relevant_data$ANG.d18O)
+plot(relevant_data$avg_winter_temp,relevant_data$ANG.d18O)
+
+# plotting in matrix, summer and winter precipitation and temperature effects on TRI
+par(mfcol=c(2,2))
+plot(relevant_data$avg_spr_summer_prec,relevant_data$ANG.tri)
+plot(relevant_data$avg_winter_prec,relevant_data$ANG.tri) 
+plot(relevant_data$avg_spr_summer_temp,relevant_data$ANG.tri)
+plot(relevant_data$avg_winter_temp,relevant_data$ANG.tri)
+
+#decomposition of summer and winter months
+#precipitation for summer months
+
+dcomp_summer_prec<-stlplus(relevant_data$avg_spr_summer_prec,n.p = 6, s.window = "periodic")
+plot_10<-plot(dcomp, ylab = "Precipitation", xlab = "Time",
+              main = "Decomposition of the average yearly summer precipitation")
+#temperature for summer months
+
+dcomp_summer_temp<-stlplus(relevant_data$avg_spr_summer_temp,n.p = 6, s.window = "periodic")
+plot_11<-plot(dcomp, ylab = "Precipitation", xlab = "Time",
+              main = "Decomposition of the average yearly summer temperature")
+
+#precipitation for winter months
+
+dcomp_winter_prec<-stlplus(relevant_data$avg_winter_prec,n.p = 4, s.window = "periodic")
+plot_12<-plot(dcomp, ylab = "Precipitation", xlab = "Time",
+              main = "Decomposition of the average yearly winter precipitation")
+
+#temperature for winter months
+
+dcomp_winter_temp<-stlplus(relevant_data$avg_winter_temp,n.p = 4, s.window = "periodic")
+plot_13<-plot(dcomp, ylab = "Precipitation", xlab = "Time",
+              main = "Decomposition of the average yearly winter temperature")
+
+grid.arrange(plot_10,plot_11,plot_12,plot_13,ncol=2,nrow=2)
+
+#ploting line graphs for winter and summer months for temp and precipitation
+#1st, for temperature in summer Vs. winter
+check_14<-data.frame(relevant_data$avg_spr_summer_temp, relevant_data$avg_winter_temp)
+my.ylab = expression(paste("Spring and Summer temp /(", Degrees, "°C)"))
+test<-ggplot(data = check_14, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_spr_summer_temp, colour="Spring & Summer Temp"), size=0.7) +
+  geom_line(aes(y=relevant_data$avg_winter_temp, colour="Winter Temp"), size=0.7) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average spring & Summer Temperature Vs Winter Temperature") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Winter Temp", "Spring & Summer Temp"), palette="Set2")
+test
+
+#plotting line graph for winter precipitation and summer precipitation
+#Summer precipitation Vs. Winter precipitation
+check_15<-data.frame(relevant_data$avg_spr_summer_prec, relevant_data$avg_winter_prec)
+my.ylab = expression(paste("Spring & Summer /(", Millimeters, "mm)"))
+test_2<-ggplot(data = check_15, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_spr_summer_prec, colour="Spring & Summer precipitation"), size=0.7) +
+  geom_line(aes(y=relevant_data$avg_winter_prec, colour="Winter precipitation"), size=0.4) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average spring & Summer Precipitation Vs Winter Precipitation") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Winter precipitation", "Spring & Summer precipitation"), palette="Set2")
+test_2
+
+#what proxies' signals do we get from seasonal variations?
+#scatterplots showing relationship between seasons and proxies
+par(mfcol=c(2,2))
+plot(relevant_data$avg_spr_summer_prec,relevant_data$ANG.d18O)
+plot(relevant_data$avg_winter_prec,relevant_data$ANG.d18O) 
+plot(relevant_data$avg_spr_summer_temp,relevant_data$ANG.d18O)
+plot(relevant_data$avg_winter_temp,relevant_data$ANG.d18O)
+
+# plotting in matrix, summer and winter precipitation and temperature effects on TRI
+par(mfcol=c(2,2))
+plot(relevant_data$avg_spr_summer_prec,relevant_data$ANG.tri)
+plot(relevant_data$avg_winter_prec,relevant_data$ANG.tri) 
+plot(relevant_data$avg_spr_summer_temp,relevant_data$ANG.tri)
+plot(relevant_data$avg_winter_temp,relevant_data$ANG.tri)
+#summer precipitation vs. oxygen isotope
+checck_21<-data.frame(relevant_data$avg_spr_summer_prec)
+my.ylab = expression(paste("Average yearly summer precipitation/(", Millimeters, "mm)"))
+checck_22<-ggplot(data = checck_21, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_spr_summer_prec, colour="Average yearly summer Precipitation"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly summer Precipitation") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c( "Average yearly summer Precipitation"), palette="Set2")
+checck_22
+
+checck_21_b<-data.frame(relevant_data$ANG.d18O)
+my.ylab = expression(paste("yearly Oxygen isotope/(",  ")"))
+checck_22_b<-ggplot(data = checck_21_b, aes(x=relevant_data$year)) +
+    geom_line(aes(y=relevant_data$ANG.d18O, colour="Oxygen Isotope"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Oxygen Isotope") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Oxygen Isotope"), palette="Set2")
+checck_22_b
+
+
+
+
+
+
+
+#summer precipitation Vs. TRI
+
+check_23<-data.frame(relevant_data$avg_spr_summer_prec)
+my.ylab = expression(paste("Average yearly summer precipitation/(", Millimeters, "mm)"))
+check_24<-ggplot(data = check_23, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_spr_summer_prec, colour="Average yearly summer Precipitation"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly summer Precipitation") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly summer Precipitation"), palette="Set2")
+check_24
+
+check_23_b<-data.frame(relevant_data$ANG.tri)
+my.ylab = expression(paste("Yearly TRI/(",")"))
+check_24_b<-ggplot(data = check_23_b, aes(x=relevant_data$year)) +
+  
+  geom_line(aes(y=relevant_data$ANG.tri, colour="Tree ring index"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly tree ring index") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Tree ring index"), palette="Set2")
+check_24_b
+
+grid.arrange(checck_22,check_24,checck_22_b,check_24_b)
+
+
+
+
+
+
+#summer temperature vs. Oxygen isotpe
+check_25_a<-data.frame(relevant_data$avg_spr_summer_temp)
+my.ylab = expression(paste("Average yearly summer temperature/(",Degrees, "°C)"))
+check_26_a<-ggplot(data = check_25_a, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_spr_summer_temp, colour="Average yearly summer temperature"), size=0.9) +
+  
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly summer temperature") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly summer temperature"), palette="Set2")
+check_26_a
+
+check_25_b<-data.frame(relevant_data$ANG.d18O)
+my.ylab = expression(paste("Oxygen isotope/(", ")"))
+check_26_b<-ggplot(data = check_25_b, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$ANG.d18O, colour="Oxygen isotope"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Oxygen Isotope") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Oxygen isotope"), palette="Set2")
+check_26_b
+
+#summer temperature Vs. TRI
+
+check_27_a<-data.frame(relevant_data$avg_spr_summer_temp)
+my.ylab = expression(paste("Average yearly summer temperature/(",Degrees, "°C)"))
+check_28_a<-ggplot(data = check_27_a, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_spr_summer_temp, colour="Average yearly summer temperature"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly summer temperature") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly summer temperature"), palette="Set2")
+check_28_a
+
+check_27_b<-data.frame(relevant_data$ANG.tri)
+my.ylab = expression(paste("yearly TRI/(", ")"))
+check_28_b<-ggplot(data = check_27_b, aes(x=relevant_data$year)) +
+ 
+   geom_line(aes(y=relevant_data$ANG.tri, colour="Tree ring index"), size=0.9) +
+   labs(x="Years", y=my.ylab, title = "Graph of yearly Tree ring index") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Tree ring index"), palette="Set2")
+check_28_b
+
+
+grid.arrange(check_26_a,check_28_a,check_26_b,check_28_b,ncol=2,nrow=2)
+
+
+#Now for winter Precipitation Vs Proxies
+#winter precipitation vs. Oxygen isotope
+check_29_a<-data.frame(relevant_data$avg_winter_prec)
+my.ylab = expression(paste("Average yearly winter precipitation/(", Millimeters, "mm)"))
+check_30_a<-ggplot(data = check_29_a, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_winter_prec, colour="Average yearly winter Precipitation"), size=0.9) +
+  
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly winter Precipitation ") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly winter Precipitation"), palette="Set2")
+check_30_a
+
+check_29_b<-data.frame(relevant_data$ANG.d18O)
+my.ylab = expression(paste(" yearly Oxygen isotope/(",  ")"))
+check_30_b<-ggplot(data = check_29_b, aes(x=relevant_data$year)) +
+  
+  geom_line(aes(y=relevant_data$ANG.d18O, colour="Oxygen Isotope"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Oxygen Isotope") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Oxygen Isotope", "Average yearly winter Precipitation"), palette="Set2")
+check_30_b
+
+
+
+
+#winter precipitation Vs. TRI
+
+check_31_a<-data.frame(relevant_data$avg_winter_prec)
+my.ylab = expression(paste("Average yearly winter precipitation/(", Millimeters, "mm)"))
+check_32_a<-ggplot(data = check_31_a, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_winter_prec, colour="Average yearly winter Precipitation"), size=0.9) +
+ 
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly winter Precipitation") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly winter Precipitation"), palette="Set2")
+check_32_a
+
+check_31_b<-data.frame(relevant_data$ANG.tri)
+my.ylab = expression(paste("Average yearly winter precipitation/(", Millimeters, "mm)"))
+check_32_b<-ggplot(data = check_31_b, aes(x=relevant_data$year)) +
+  
+  geom_line(aes(y=relevant_data$ANG.tri, colour="Tree ring index"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Tree ring index") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Tree ring index"), palette="Set2")
+check_32_b
+
+grid.arrange(check_30_a,check_32_a,check_30_b,check_32_b)
+
+#WINTER temperature vs. Oxygen isotpe
+check_33_a<-data.frame(relevant_data$avg_winter_temp)
+my.ylab = expression(paste("Average yearly winter temperature/(",Degrees, "°C)"))
+check_34_a<-ggplot(data = check_33_a, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_winter_temp, colour="Average yearly winter temperature"), size=0.9) +
+  
+
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly winter temperature") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly winter temperature"), palette="Set2")
+check_34_a
+
+check_33_b<-data.frame(relevant_data$ANG.d18O)
+my.ylab = expression(paste("Oxygen isotope/(", ")"))
+check_34_b<-ggplot(data = check_33_b, aes(x=relevant_data$year)) +
+  
+  geom_line(aes(y=relevant_data$ANG.d18O, colour="Oxygen isotope"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Oxygen Isotope") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Oxygen isotope"), palette="Set2")
+check_34_b
+
+#winter temperature Vs. TRI
+
+check_35_a<-data.frame(relevant_data$avg_winter_temp)
+my.ylab = expression(paste("Average yearly winter temperature/(",Degrees, "°C)"))
+check_36_a<-ggplot(data = check_35_a, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$avg_winter_temp, colour="Average yearly winter temperature"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly winter temperature") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Average yearly winter temperature"), palette="Set2")
+check_36_a
+
+check_35_b<-data.frame(relevant_data$ANG.tri)
+my.ylab = expression(paste("yearly TRI/(", ")"))
+check_36_b<-ggplot(data = check_35_b, aes(x=relevant_data$year)) +
+  
+  geom_line(aes(y=relevant_data$ANG.tri, colour="Tree ring index"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of yearly Tree ring index") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Tree ring index"), palette="Set2")
+check_36_b
+
+
+grid.arrange(check_34_a,check_36_a,check_34_b,check_36_b,ncol=2,nrow=2)
+
+#RECONSTRUCTION PROPER
+
+
+
+#This plots the scatterplot ,regression line and gives a summary (As already stated previously)
+plot(relevant_data$ANG.d18O,relevant_data$avg_temp_add)
+cor(relevant_data$ANG.d18O,relevant_data$avg_temp_add)
+n<-lm(avg_temp_add~ANG.d18O, data = relevant_data)
+abline(n)
+summary(n)
+
+n$fitted.values  #   shows points that fit in the regression line
+
+coef(n) # displays the intercept and slope
+n$coefficients[1] #displays only intercept
+n$coefficients[2] # displays slope only
+
+#Now to reconstruct temperature for 645 years based on regression equation
+#Confidence interval of 90% gives us the lower and upper values
+proxy_data$Reconstructed_temp<-predict(n,data.frame(ANG.d18O=c(proxy_data$ANG.d18O)),interval = "confidence",level = 0.9)
+
+proxy_data$Reconstructed_temp
+
+#with prediction interval
+proxy_data$Reconstructed_temp_p<-predict(n,data.frame(ANG.d18O=c(proxy_data$ANG.d18O)),interval = "prediction",level = 0.9)
+proxy_data$Reconstructed_temp_p
+
+#To be able to plot,we need one value and not the upper and lower intervals.So we create a variable without the intervals
+proxy_data$Reconstruct_temp_O18<-predict(n,data.frame(ANG.d18O=c(proxy_data$ANG.d18O)))
+
+proxy_data$Reconstruct_temp_O18
+# Repeat and rinse like above : plotting for temperature vs TRI and to reconstruct
+
+plot(relevant_data$ANG.tri,relevant_data$avg_temp_add)
+cor(relevant_data$ANG.tri,relevant_data$avg_temp_add)
+m<-lm(avg_temp_add~ANG.tri, data = relevant_data)
+abline(m)
+summary(m)
+
+m$fitted.values  #   shows points that fit in the regression line
+coef(m) # displays the intercept and slope
+m$coefficients[1] #displays only intercept
+m$coefficients[2] # displays slope only
+
+proxy_data$Reconstructed_temp_TRI<-predict(m,data.frame(ANG.tri=c(proxy_data$ANG.tri)),interval = "confidence",level = 0.9)
+proxy_data$Reconstructed_temp_TRI
+
+#for the prediction interval
+proxy_data$Reconstructed_temp_TRI_p<-predict(m,data.frame(ANG.tri=c(proxy_data$ANG.tri)),interval = "prediction",level = 0.9)
+proxy_data$Reconstructed_temp_TRI_p
+
+#To be able to plot,we need one value and not the upper and lower intervals.So we create a variable without the intervals
+proxy_data$Reconstruct_temp_TRI<-predict(m,data.frame(ANG.tri=c(proxy_data$ANG.tri)))
+proxy_data$Reconstruct_temp_TRI
+
+
+#Note: Prediction intervals are  wider than confidence intervals
+#To show the range of possible location of the regression line
+ggplot(relevant_data,aes(x=ANG.d18O,y=avg_temp_add))+geom_point()+geom_smooth(method="lm")
+ggplot(relevant_data,aes(x=ANG.d18O,y=avg_prep_add))+geom_point()+geom_smooth(method="lm")
+ggplot(relevant_data,aes(x=ANG.tri,y=avg_temp_add))+geom_point()+geom_smooth(method="lm")
+ggplot(relevant_data,aes(x=ANG.tri,y=avg_prep_add))+geom_point()+geom_smooth(method="lm")
+
+
+#checking for fidelity between reconstructed temperatures by Oxygen isotope vs temperature by TRI
+check_16<-data.frame(proxy_data$Reconstruct_temp_TRI)
+my.ylab = expression(paste("Average yearly Temperature/(", Degrees, "°C)"))
+check_17<-ggplot(data = check_16, aes(x=proxy_data$year)) +
+  geom_line(aes(y=proxy_data$Reconstruct_temp_TRI, colour="Average yearly Tree ring Temperature"), size=0.5) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly reconstructed Temperature by TRI") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c( "Average yearly Tree ring Temperature"), palette="Set2")
+check_17
+
+
+check_16b<-data.frame(proxy_data$Reconstruct_temp_O18)
+my.ylab = expression(paste("Average yearly temperature/(", Degrees, "°C)"))
+check_17b<-ggplot(data = check_16b, aes(x=proxy_data$year)) +
+  
+  geom_line(aes(y=proxy_data$Reconstruct_temp_O18, colour="Oxygen Isotope Temperature"), size=0.2) +
+
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly reconstructed Temperature by O18") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Oxygen Isotope Temperature"), palette="Set2")
+check_17b
+
+grid.arrange(check_17,check_17b,nrow=2)
+
+#scatter plot to proove that Temperature values gotten by TRI and Oxygen isotope are same
+plot(proxy_data$Reconstructed_temp_TRI_p,proxy_data$Reconstructed_temp_p)
+cor(proxy_data$Reconstructed_temp_TRI_p,proxy_data$Reconstructed_temp_p)
+T<-lm(Reconstructed_temp_TRI_p~Reconstructed_temp_p,data = proxy_data)
+abline(T)
+summary(T)
+#questions : why is this regression equation not consistent with my control points???Have to do with confidentce intervals?p-values???
+
+#Repeat same for the reconstruction of Precipitation from Oxygen isotope and TRI
+#relationship between oxygen isotope and precipitation 
+plot(relevant_data$ANG.d18O,relevant_data$avg_prep_add)
+cor(relevant_data$ANG.d18O,relevant_data$avg_prep_add)
+y<-lm(avg_prep_add~ANG.d18O, data = relevant_data)
+abline(y) # P = -4.081*X + 64.908
+summary(y)
+#Now to reconstruct precipitation for 645 years based on regression equation
+#Confidence interval of 90% gives us the lower and upper values
+proxy_data$Reconstructed_prec<-predict(y,data.frame(ANG.d18O=c(proxy_data$ANG.d18O)),interval = "confidence",level = 0.9)
+
+proxy_data$Reconstructed_prec
+
+#with prediction interval
+proxy_data$Reconstructed_prec_p<-predict(y,data.frame(ANG.d18O=c(proxy_data$ANG.d18O)),interval = "prediction",level = 0.9)
+proxy_data$Reconstructed_prec_p
+
+
+
+
+
+#For TRI in predicting reconstructing precipitation
+
+plot(relevant_data$ANG.tri,relevant_data$avg_prep_add)
+cor(relevant_data$ANG.tri,relevant_data$avg_prep_add)
+z<-lm(avg_prep_add~ANG.tri, data = relevant_data)
+abline(z) # P = 23.112*X + 41.647
+summary(z)
+
+proxy_data$Reconstructed_prec_TRI<-predict(z,data.frame(ANG.tri=c(proxy_data$ANG.tri)),interval = "confidence",level = 0.9)
+proxy_data$Reconstructed_prec_TRI
+
+#for the prediction interval
+proxy_data$Reconstructed_prec_TRI_p<-predict(z,data.frame(ANG.tri=c(proxy_data$ANG.tri)),interval = "prediction",level = 0.9)
+proxy_data$Reconstructed_prec_TRI_p
+
+#checking for fidelity between reconstructed precipitation by Oxygen isotope vs precipitation by TRI
+check_18<-data.frame(proxy_data$Reconstructed_prec_TRI_p, proxy_data$Reconstructed_prec_p)
+
+my.ylab = expression(paste("Average yearly precipitation/(", Millimeters, "mm)"))
+check_19<-ggplot(data = check_18, aes(x=proxy_data$year)) +
+  geom_line(aes(y=proxy_data$Reconstructed_prec_TRI_p, colour="Average yearly Tree ring Precipitation"), size=0.3) +
+  geom_line(aes(y=proxy_data$Reconstructed_prec_p, colour="Oxygen Isotope Precipitation"), size=0.2) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of average yearly reconstructed Precipitation") + 
+  theme_bw() + 
+  scale_colour_brewer("Legend",breaks=c("Oxygen Isotope Precipitation", "Average yearly Tree ring Precipitation"), palette="Set2")
+check_19
+
+
+#How does reconstructed temperature fair with instrumental temperature between 1900 and 2004?caliberation?
+relevant_data$recon_temp<-proxy_data$Reconstructed_temp_p[542:645]
+relevant_data$recon_temp
+
+check_20<-data.frame(relevant_data$avg_temp_add)
+my.ylab = expression(paste("Average yearly temperature/(", Degrees, "°C)"))
+
+check_21<-ggplot(data = check_20, aes(x=relevant_data$year)) +
+  
+  geom_line(aes(y=relevant_data$avg_temp_add, colour="Average yearly instrumental temperature"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of instrumental temperature") + 
+  theme_bw()+ 
+  scale_colour_brewer("Legend",breaks=c("Average yearly instrumental temperature"), palette="Set2")
+check_21
+
+
+
+
+
+
+
+check_20_b<-data.frame(relevant_data$recon_temp)
+my.ylab = expression(paste("Average yearly temperature/(", Degrees, "°C)"))
+
+check_21_b<-ggplot(data = check_20_b, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$recon_temp, colour="Average yearly reconstructed Temp"), size=0.9) +
+  
+  
+  labs(x="Years", y=my.ylab, title = "Graph of reconstructed temperature") + 
+  theme_bw()+ 
+  scale_colour_brewer("Legend",breaks=c("Average yearly reconstructed Temp"), palette="Set2")
+check_21_b
+
+#merge them
+
+grid.arrange(check_21,check_21_b,nrow=2)
+
+#How does reconstructed precipitation fair with instrumental precipitation between 1900 and 2004?caliberation?
+relevant_data$recon_prec<-proxy_data$Reconstructed_prec_p[542:645]
+relevant_data$recon_prec
+
+check_50<-data.frame(relevant_data$recon_prec)
+my.ylab = expression(paste("Average yearly precipitation/(", Millimeters, "Mm)"))
+
+check_51<-ggplot(data = check_50, aes(x=relevant_data$year)) +
+  geom_line(aes(y=relevant_data$recon_prec, colour="Average yearly reconstructed precipitation"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of reconstructed precipitation") + 
+  theme_bw()+ 
+  scale_colour_brewer("Legend",breaks=c("Average yearly reconstructed precipitation"), palette="Set2")
+check_51
+
+
+check_50_b<-data.frame(relevant_data$avg_prep_add)
+my.ylab = expression(paste("Average yearly precipitation/(", Millimeters, "Mm)"))
+
+check_51_b<-ggplot(data = check_50_b, aes(x=relevant_data$year)) +
+  
+  geom_line(aes(y=relevant_data$avg_prep_add, colour="Average yearly instrumental precipitation"), size=0.9) +
+  
+  labs(x="Years", y=my.ylab, title = "Graph of instrumental precipitation") + 
+  theme_bw()+ 
+  scale_colour_brewer("Legend",breaks=c("Average yearly instrumental precipitation"), palette="Set2")
+check_51_b
+
+grid.arrange(check_51,check_51_b,nrow=2)
+
+#Arrange all comparisons between reconstructed meteorological variables Vs. Instrumental Met variables
+
+grid.arrange(check_21,check_51_b,check_21_b,check_51,nrow=2,ncol=2)
+
+#End of code
+
+
+
